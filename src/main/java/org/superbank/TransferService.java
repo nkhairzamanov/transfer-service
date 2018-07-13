@@ -2,6 +2,7 @@ package org.superbank;
 
 import com.sun.net.httpserver.HttpServer;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.jdkhttp.JdkHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.h2.tools.Server;
@@ -32,6 +33,7 @@ public class TransferService {
         final DataRepositoryImpl transferService = new DataRepositoryImpl(sessionFactory);
         httpPort = Integer.parseInt(System.getProperty("port.http.transfer-service", "8080"));
         final ResourceConfig config = new ResourceConfig(RestEndpoint.class);
+        config.register(JacksonFeature.class);
         config.registerInstances(new AbstractBinder() {
             @Override
             protected void configure() {
