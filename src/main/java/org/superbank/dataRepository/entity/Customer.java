@@ -11,6 +11,9 @@ public class Customer {
     @GeneratedValue
     private long id;
 
+    @Version
+    private long versionNo;
+
     private String name;
     private String lastName;
 
@@ -55,5 +58,13 @@ public class Customer {
 
     public void setAccounts(Collection<Account> accounts) {
         this.accounts = accounts;
+    }
+
+    public long getVersionNo() {
+        return versionNo;
+    }
+
+    public void setVersionNo(long versionNo) {
+        this.versionNo = versionNo;
     }
 }

@@ -3,9 +3,9 @@ package org.superbank;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 
-public class TransferServieExceptionMapper implements ExceptionMapper<RuntimeException> {
+public class TransferServiceExceptionMapper implements ExceptionMapper<TransferServiceRuntimeException> {
     @Override
-    public Response toResponse(RuntimeException e) {
-        return Response.serverError().entity(e).build();
+    public Response toResponse(TransferServiceRuntimeException e) {
+        return Response.serverError().entity(e.getMessage()).build();
     }
 }

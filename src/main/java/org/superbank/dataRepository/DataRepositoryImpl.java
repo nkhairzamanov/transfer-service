@@ -1,20 +1,25 @@
 package org.superbank.dataRepository;
 
 import org.apache.commons.lang3.StringUtils;
+import org.hibernate.LockMode;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.superbank.TransferServiceRuntimeException;
 import org.superbank.dataRepository.entity.Account;
 import org.superbank.dataRepository.entity.Customer;
 import org.superbank.dataRepository.entity.Transfer;
 
+import javax.persistence.LockModeType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 public class DataRepositoryImpl implements DataRepository {
+    private final static Logger LOG = LoggerFactory.getLogger(DataRepositoryImpl.class);
 
     private final SessionFactory sessionFactory;
 
@@ -27,12 +32,15 @@ public class DataRepositoryImpl implements DataRepository {
         requireNotBlank(customer.getName(), "customer's name cannot be empty");
         requireNotBlank(customer.getLastName(), "customer's last name cannot be empty");
 
+        Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
-            Transaction tx = session.beginTransaction();
+            tx = session.beginTransaction();
             customer.setId(0);
             session.persist(customer);
             tx.commit();
             return customer.getId();
+        } catch (Exception e) {
+            throw handleAndWrapException(e, tx);
         }
     }
 
@@ -46,18 +54,24 @@ public class DataRepositoryImpl implements DataRepository {
     public long createAccount(Account account, long customerId) {
         requireNotBlank(account.getIban(), "customer's account iban id cannot be empty");
 
+        Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
-            Transaction tx = session.beginTransaction();
+            tx = session.beginTransaction();
+            Customer customer = session.load(Customer.class, customerId, LockMode.PESSIMISTIC_FORCE_INCREMENT);
+
             account.setId(0);
             session.persist(account);
 
-            Customer customer = session.get(Customer.class, customerId);
             customer.getAccounts().add(account);
             session.merge(customer);
+
             tx.commit();
 
             return account.getId();
+        } catch (Exception e) {
+            throw handleAndWrapException(e, tx);
         }
+
     }
 
     @Override
@@ -75,8 +89,7 @@ public class DataRepositoryImpl implements DataRepository {
         try (Session session = sessionFactory.openSession()) {
             Query<Account> query = session.createQuery("from Account where iban=:iban");
             query.setParameter("iban", iban);
-            Optional<Account> account = query.uniqueResultOptional();
-            return account;
+            return query.uniqueResultOptional();
         }
     }
 
@@ -99,25 +112,44 @@ public class DataRepositoryImpl implements DataRepository {
             throw new TransferServiceRuntimeException("The amount to transfer cannot be null");
         }
 
+        Transaction tx = null;
         try (Session session = sessionFactory.openSession()) {
-            Transaction tx = session.beginTransaction();
+            tx = session.beginTransaction();
 
             Query<Account> query = session.createQuery("from Account where iban=:iban");
+            query.setLockMode(LockModeType.PESSIMISTIC_FORCE_INCREMENT);
+
             query.setParameter("iban", fromIban);
             Account fromAccount = query.uniqueResultOptional()
                     .orElseThrow(() -> new TransferServiceRuntimeException("account " + fromIban + " not found"));
-            fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
-            session.merge(fromAccount);
 
             query.setParameter("iban", toIban);
             Account toAccount = query.uniqueResultOptional()
                     .orElseThrow(() -> new TransferServiceRuntimeException("account " + toIban + "not found"));
+
+            fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
+            session.merge(fromAccount);
+
             toAccount.setBalance(toAccount.getBalance().add(amount));
             session.merge(toAccount);
 
             session.persist(createTransfer(fromAccount, toAccount, amount, message));
 
             tx.commit();
+        } catch (Exception e) {
+            throw handleAndWrapException(e, tx);
         }
+    }
+
+    private TransferServiceRuntimeException handleAndWrapException(Exception e, Transaction tx) {
+        LOG.error("Persistence problem", e);
+        if (tx != null && tx.getStatus().canRollback()) {
+            try {
+                tx.rollback();
+            } catch (Exception re) {
+                return new TransferServiceRuntimeException(e);
+            }
+        }
+        return new TransferServiceRuntimeException(e);
     }
 }

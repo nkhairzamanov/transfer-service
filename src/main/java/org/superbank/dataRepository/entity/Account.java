@@ -1,9 +1,6 @@
 package org.superbank.dataRepository.entity;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.math.BigDecimal;
 
 @Entity
@@ -11,6 +8,9 @@ public class Account {
     @Id
     @GeneratedValue
     private long id;
+
+    @Version
+    private long versionNo;
 
     @Column(unique = true)
     private String iban;
@@ -48,4 +48,11 @@ public class Account {
         this.balance = balance;
     }
 
+    public long getVersionNo() {
+        return versionNo;
+    }
+
+    public void setVersionNo(long versionNo) {
+        this.versionNo = versionNo;
+    }
 }

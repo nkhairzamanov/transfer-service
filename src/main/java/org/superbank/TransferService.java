@@ -19,6 +19,8 @@ import org.superbank.endpoint.RestEndpoint;
 import javax.ws.rs.core.UriBuilder;
 import java.net.URI;
 import java.sql.SQLException;
+import java.util.HashSet;
+import java.util.Set;
 
 public class TransferService {
     private final static Logger LOG = LoggerFactory.getLogger(TransferService.class);
@@ -32,7 +34,11 @@ public class TransferService {
         final SessionFactory sessionFactory = new MetadataSources(registry).buildMetadata().buildSessionFactory();
         final DataRepositoryImpl transferService = new DataRepositoryImpl(sessionFactory);
         httpPort = Integer.parseInt(System.getProperty("port.http.transfer-service", "8080"));
-        final ResourceConfig config = new ResourceConfig(RestEndpoint.class);
+
+        Set<Class<?>> classes = new HashSet<>();
+        classes.add(TransferServiceExceptionMapper.class);
+        classes.add(RestEndpoint.class);
+        final ResourceConfig config = new ResourceConfig(classes);
         config.register(JacksonFeature.class);
         config.registerInstances(new AbstractBinder() {
             @Override
@@ -42,6 +48,7 @@ public class TransferService {
         });
         final URI baseUri = UriBuilder.fromUri("http://localhost/").port(httpPort).build();
         this.server = JdkHttpServerFactory.createHttpServer(baseUri, config);
+
         try {
             this.h2TcpServer = Server.createTcpServer().start(); //to be able to use an sql console in IDE
         } catch (SQLException e) {
