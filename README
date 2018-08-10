@@ -1,9 +1,9 @@
 Transfer service description
 ----------------------------
 
-1. The data model is reflected in the entities in package: org.superbank.dataRepository.entity
+1. The data model is reflected in the entities in package: org.superbank.dataRepository.entity.
 2. The REST API can be obtained here: org.superbank.endpoint.RestEndpoint.
-3. To run the tests: mvn test
+3. To run the tests: mvn test.
 4. To build the fat jar: mvn package. The result is: target/transfer-service-1.0-SNAPSHOT-jar-with-dependencies.jar
 5. To run the service: java -jar transfer-service-1.0-SNAPSHOT-jar-with-dependencies.jar.
 6. By default the service is running on port 8080. To use a custom port a property port.http.transfer-service should be passed in:
